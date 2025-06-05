@@ -5,14 +5,19 @@ import { Github, Upload, Loader2, ExternalLink, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { deployToArweave } from "@/lib/deploy"
 import { processGithubRepo } from "@/lib/process-github"
 import { processZipFile } from "@/lib/process-zip"
 import { processHtml, processMhtml, processUrlContent } from "@/lib/html-processor"
+import { ShineBorder } from "@/components/magicui/shine-border"
+// import BeamsBackground from "@/components/ardacity/beams-background"
+import ParticlesBackground from "@/components/ardacity/particles-background"
+
 
 export default function Home() {
+  
   const [url, setUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -143,15 +148,21 @@ export default function Home() {
   }
 
   return (
-    <main className="container max-w-3xl mx-auto py-10 px-4">
-      <div className="flex flex-col items-center text-center mb-10">
-        <h1 className="text-4xl font-bold mb-4">Arweave Deployer</h1>
-        <p className="text-gray-500 max-w-xl">
+    <main className="container max-w-3xl mx-auto py-10 px-4 " >
+      <ParticlesBackground className="absolute inset-0 z-[-1]" />
+      <div className=" relative flex flex-col items-center text-center mb-10 ">
+        
+        <h1 className="text-4xl font-bold mb-4 text-transparent ">Arweave Deployer</h1>
+        <p className="text-gray-500 max-w-xl text-transparent">
           Deploy your static websites to the Arweave blockchain. Upload from GitHub, URL, or local files.
         </p>
       </div>
 
-      <Tabs defaultValue="url" className="w-full">
+
+     
+
+    
+      <Tabs defaultValue="url" className="w-full mt-28">
         <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="url">Website URL</TabsTrigger>
           <TabsTrigger value="github">GitHub Repository</TabsTrigger>
@@ -159,7 +170,8 @@ export default function Home() {
         </TabsList>
 
         <TabsContent value="url">
-          <Card>
+          <Card className="relative overflow-hidden">
+            <ShineBorder shineColor={"white"} />
             <CardHeader>
               <CardTitle>Deploy from URL</CardTitle>
               <CardDescription>Enter the URL of the website you want to deploy</CardDescription>
@@ -191,9 +203,10 @@ export default function Home() {
             </CardContent>
           </Card>
         </TabsContent>
-
+        
         <TabsContent value="github">
-          <Card>
+          <Card className="relative overflow-hidden">
+            <ShineBorder shineColor={"white"} />
             <CardHeader>
               <CardTitle>Deploy from GitHub</CardTitle>
               <CardDescription>Enter the URL of your GitHub repository to deploy</CardDescription>
@@ -227,7 +240,8 @@ export default function Home() {
         </TabsContent>
 
         <TabsContent value="file">
-          <Card>
+          <Card className="relative overflow-hidden">
+            <ShineBorder shineColor={"white"} />
             <CardHeader>
               <CardTitle>Upload File</CardTitle>
               <CardDescription>Upload an HTML, MHTML, or ZIP file containing your project</CardDescription>

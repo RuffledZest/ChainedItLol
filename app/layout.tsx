@@ -7,9 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Arweave Deployer",
-  description: "Deploy static websites to Arweave blockchain",
-    generator: 'v0.dev'
+  title: "PermaWay",
+  description: "Deploy static websites to Arweave blockchain"
 }
 
 export default function RootLayout({
