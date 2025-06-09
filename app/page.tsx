@@ -9,10 +9,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { deployToArweave } from "@/lib/deploy"
 import { processGithubRepo } from "@/lib/process-github"
-import { processZipFile } from "@/lib/process-zip"
+import { processZipFile } from "@/lib/zip-processing"
 import { processHtml, processMhtml, processUrlContent } from "@/lib/html-processor"
 import { ShineBorder } from "@/components/magicui/shine-border"
-// import BeamsBackground from "@/components/ardacity/beams-background"
 import ParticlesBackground from "@/components/ardacity/particles-background"
 
 
@@ -41,7 +40,7 @@ export default function Home() {
       setFileSize(size)
 
       if (size > 3000) {
-        setError(`HTML file size (${size.toFixed(2)}KB) exceeds 100KB limit. Please use a smaller project.`)
+        setError(`HTML file size (${size.toFixed(2)}KB) exceeds 3MB limit. Please use a smaller project.`)
         setIsLoading(false)
         return
       }
@@ -70,12 +69,15 @@ export default function Home() {
     setDeployedUrls([])
 
     try {
+      console.log("Starting GitHub deployment for:", url)
       const html = await processGithubRepo(url)
       const size = new Blob([html]).size / 1024 // Size in KB
       setFileSize(size)
 
+      console.log(`Generated HTML size: ${size.toFixed(2)}KB`)
+
       if (size > 3000) {
-        setError(`HTML file size (${size.toFixed(2)}KB) exceeds 100KB limit. Please use a smaller project.`)
+        setError(`HTML file size (${size.toFixed(2)}KB) exceeds 3MB limit. Please use a smaller project.`)
         setIsLoading(false)
         return
       }
@@ -83,10 +85,12 @@ export default function Home() {
       const result = await deployToArweave(html)
       if (result.success) {
         setDeployedUrls(result.links)
+        console.log("Deployment successful:", result.links)
       } else {
         setError("Deployment failed. Please try again.")
       }
     } catch (err) {
+      console.error("GitHub deployment error:", err)
       setError(err instanceof Error ? err.message : "An unknown error occurred")
     } finally {
       setIsLoading(false)
@@ -128,8 +132,8 @@ export default function Home() {
       const size = new Blob([html]).size / 1024 // Size in KB
       setFileSize(size)
 
-      if (size >3000) {
-        setError(`HTML file size (${size.toFixed(2)}KB) exceeds 100KB limit. Please use a smaller project.`)
+      if (size > 3000) {
+        setError(`HTML file size (${size.toFixed(2)}KB) exceeds 3MB limit. Please use a smaller project.`)
         setIsLoading(false)
         return
       }
@@ -158,10 +162,6 @@ export default function Home() {
         </p>
       </div>
 
-
-     
-
-    
       <Tabs defaultValue="url" className="w-full mt-28">
         <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="url">Website URL</TabsTrigger>
@@ -209,7 +209,13 @@ export default function Home() {
             <ShineBorder shineColor={"white"} />
             <CardHeader>
               <CardTitle>Deploy from GitHub</CardTitle>
-              <CardDescription>Enter the URL of your GitHub repository to deploy</CardDescription>
+              <CardDescription>
+                Enter the URL of your GitHub repository to deploy
+                <br />
+                <small className="text-muted-foreground">
+                  Example: https://github.com/username/repository
+                </small>
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-4">
@@ -234,6 +240,11 @@ export default function Home() {
                     )}
                   </Button>
                 </div>
+                {isLoading && (
+                  <div className="text-sm text-muted-foreground">
+                    Fetching repository and processing files...
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -284,7 +295,7 @@ export default function Home() {
       {fileSize !== null && !error && (
         <Alert className="mt-6">
           <AlertDescription>
-            HTML file size: {fileSize.toFixed(2)}KB {fileSize > 90 && "(approaching 100KB limit)"}
+            HTML file size: {fileSize.toFixed(2)}KB {fileSize > 2700 && "(approaching 3MB limit)"}
           </AlertDescription>
         </Alert>
       )}

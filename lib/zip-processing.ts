@@ -15,29 +15,52 @@ export async function processZipFile(file: File): Promise<string> {
 
     zip.forEach((path, zipEntry) => {
       if (!zipEntry.dir) {
-        const promise = zipEntry.async("text").then((content) => {
-          files[path] = content
-        })
-        promises.push(promise)
+        // Only process text files and common web assets
+        const isTextFile = /\.(html|htm|css|js|json|txt|md|xml|svg|ts|tsx|jsx|vue|php)$/i.test(path)
+        
+        if (isTextFile) {
+          const promise = zipEntry
+            .async("text")
+            .then((content) => {
+              files[path] = content
+            })
+            .catch((error) => {
+              console.warn(`Failed to read file ${path}:`, error)
+            })
+          promises.push(promise)
+        }
       }
     })
 
     await Promise.all(promises)
 
+    if (Object.keys(files).length === 0) {
+      throw new Error("No processable files found in the repository")
+    }
+
     // Process the extracted files and convert to a single HTML file
     return await convertToSingleHtml(files)
   } catch (error) {
     console.error("Error processing zip file:", error)
-    throw new Error("Failed to process zip file. Please check the file and try again.")
+    if (error instanceof Error) {
+      throw new Error(`Failed to process repository: ${error.message}`)
+    }
+    throw new Error("Failed to process repository. Please check the repository and try again.")
   }
 }
 
 async function convertToSingleHtml(files: Record<string, string>): Promise<string> {
   // Find the main HTML file
-  const htmlFiles = Object.keys(files).filter((path) => path.endsWith(".html"))
+  const htmlFiles = Object.keys(files).filter((path) => 
+    path.endsWith(".html") && !path.includes("node_modules")
+  )
+  
   const mainHtmlFile =
     htmlFiles.find(
-      (path) => path.endsWith("index.html") || path.match(/\/index\.html$/) || path.toLowerCase().includes("index"),
+      (path) => 
+        path.endsWith("index.html") || 
+        path.match(/\/index\.html$/) || 
+        path.toLowerCase().includes("index")
     ) || htmlFiles[0]
 
   if (!mainHtmlFile) {
@@ -78,7 +101,10 @@ async function convertToSingleHtml(files: Record<string, string>): Promise<strin
   // Add any remaining CSS files as inline styles
   finalHtml += "  <style>\n"
   Object.entries(files).forEach(([path, content]) => {
-    if (path.endsWith(".css") && !headContent.includes(content) && !bodyContent.includes(content)) {
+    if (path.endsWith(".css") && 
+        !path.includes("node_modules") && 
+        !headContent.includes(content) && 
+        !bodyContent.includes(content)) {
       finalHtml += `/* ${path} */\n${content}\n\n`
     }
   })
@@ -107,6 +133,7 @@ async function convertToSingleHtml(files: Record<string, string>): Promise<strin
     if (
       path.endsWith(".js") &&
       !path.includes("node_modules") &&
+      !path.includes(".min.") && // Skip minified files to reduce size
       !headContent.includes(content) &&
       !bodyContent.includes(content)
     ) {
@@ -134,7 +161,10 @@ async function inlineCssInHtml(htmlContent: string, files: Record<string, string
     // Find the corresponding CSS file
     const cssFile = Object.keys(files).find((path) => {
       const normalizedPath = path.replace(/^[^/]*\//, "") // Remove first directory
-      return normalizedPath === href || path.endsWith(href) || path.includes(href.replace("./", ""))
+      return normalizedPath === href || 
+             path.endsWith(href) || 
+             path.includes(href.replace("./", "")) ||
+             path.includes(href.replace("/", ""))
     })
 
     if (cssFile && files[cssFile]) {
@@ -158,10 +188,18 @@ async function inlineJsInHtml(htmlContent: string, files: Record<string, string>
     const src = match[1]
     const fullMatch = match[0]
 
+    // Skip external scripts (http/https URLs)
+    if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('//')) {
+      continue
+    }
+
     // Find the corresponding JS file
     const jsFile = Object.keys(files).find((path) => {
       const normalizedPath = path.replace(/^[^/]*\//, "") // Remove first directory
-      return normalizedPath === src || path.endsWith(src) || path.includes(src.replace("./", ""))
+      return normalizedPath === src || 
+             path.endsWith(src) || 
+             path.includes(src.replace("./", "")) ||
+             path.includes(src.replace("/", ""))
     })
 
     if (jsFile && files[jsFile]) {
@@ -182,6 +220,11 @@ function createBasicHtml(files: Record<string, string>): string {
 
   // Add CSS
   html += "  <style>\n"
+  html += "    body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }\n"
+  html += "    .container { max-width: 800px; margin: 0 auto; }\n"
+  html += "    .file-list { background: #f5f5f5; padding: 20px; border-radius: 8px; }\n"
+  html += "    .file-item { margin: 5px 0; }\n"
+  
   Object.entries(files).forEach(([path, content]) => {
     if (path.endsWith(".css")) {
       html += `/* ${path} */\n${content}\n\n`
@@ -189,14 +232,24 @@ function createBasicHtml(files: Record<string, string>): string {
   })
   html += "  </style>\n</head>\n<body>\n"
 
-  // Add a basic structure
-  html += '  <div id="app">\n'
-  html += "    <h1>Deployed Project</h1>\n"
-  html += "    <p>Your project has been deployed successfully!</p>\n"
+  // Add a basic structure showing the repository contents
+  html += '  <div class="container">\n'
+  html += "    <h1>Repository Deployed Successfully!</h1>\n"
+  html += "    <p>Your repository has been processed and deployed to Arweave.</p>\n"
+  
+  // Show file structure
+  html += '    <div class="file-list">\n'
+  html += "      <h3>Repository Contents:</h3>\n"
+  Object.keys(files).forEach((path) => {
+    html += `      <div class="file-item">📄 ${path}</div>\n`
+  })
+  html += "    </div>\n"
+  
   html += "  </div>\n\n"
 
   // Add JavaScript
   html += "  <script>\n"
+  html += "    console.log('Repository deployed successfully!');\n"
   Object.entries(files).forEach(([path, content]) => {
     if (path.endsWith(".js") && !path.includes("node_modules")) {
       html += `// ${path}\n${content}\n\n`
@@ -204,39 +257,7 @@ function createBasicHtml(files: Record<string, string>): string {
   })
   html += "  </script>\n</body>\n</html>"
 
-  return html
-}
-
-function identifyProjectType(files: Record<string, string>): string {
-  // Check for package.json to identify project type
-  const packageJsonFile = Object.keys(files).find((path) => path.endsWith("package.json"))
-
-  if (packageJsonFile) {
-    try {
-      const packageJson = JSON.parse(files[packageJsonFile])
-
-      if (packageJson.dependencies) {
-        if (packageJson.dependencies["next"]) {
-          return "nextjs"
-        } else if (packageJson.dependencies["react"]) {
-          return "react"
-        } else if (packageJson.dependencies["vue"]) {
-          return "vue"
-        }
-      }
-    } catch (e) {
-      console.error("Error parsing package.json:", e)
-    }
-  }
-
-  // Check for specific files to identify project type
-  if (Object.keys(files).some((path) => path.includes("next.config"))) {
-    return "nextjs"
-  } else if (Object.keys(files).some((path) => path.includes("vite.config"))) {
-    return "vite"
-  }
-
-  return "static" // Default to static HTML
+  return optimizeHtml(html)
 }
 
 function optimizeHtml(html: string): string {
@@ -247,4 +268,5 @@ function optimizeHtml(html: string): string {
     .replace(/\/\/.*$/gm, "") // Remove single-line JS comments
     .replace(/\s{2,}/g, " ") // Replace multiple spaces with a single space
     .replace(/>\s+</g, "><") // Remove whitespace between HTML tags
+    .trim()
 }
